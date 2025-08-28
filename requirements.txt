@@ -9,7 +9,7 @@ httpx
 gitpython
 bandit
 safety
-semgrep==1.99.0
+semgrep
 pylint
 flake8
 mypy

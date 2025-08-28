@@ -56,6 +56,7 @@ class ScanRequest(BaseModel):
     github_url: Optional[HttpUrl] = None
     scan_types: List[str] = ["bandit", "safety", "semgrep"]
 
+
 class CodeScanRequest(BaseModel):
     code_content: str
     language: str
@@ -91,7 +92,7 @@ def get_scanner_executable(scanner_name: str) -> str:
             if os.path.exists(venv_python):
                 return venv_python
         return "python"
-    
+
     if os.name == "nt":  # Windows
         venv_scripts = os.path.join(os.getcwd(), "venv", "Scripts")
         exe_path = os.path.join(venv_scripts, f"{scanner_name}.exe")
@@ -102,36 +103,46 @@ def get_scanner_executable(scanner_name: str) -> str:
     return scanner_name
 
 
-async def run_command(command: List[str], cwd: Optional[str] = None, timeout: int = 300) -> Dict[str, Any]:
+async def run_command(
+    command: List[str], cwd: Optional[str] = None, timeout: int = 300
+) -> Dict[str, Any]:
     """Run a shell command and return the result"""
     try:
         print(f"Executing command: {' '.join(command)}")
         print(f"Working directory: {cwd}")
-        
+
         process = await asyncio.create_subprocess_exec(
             *command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             cwd=cwd,
         )
-        
+
         try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(), timeout=timeout
+            )
         except asyncio.TimeoutError:
             process.kill()
             await process.wait()
-            return {"returncode": -1, "stdout": "", "stderr": f"Command timeout after {timeout} seconds"}
+            return {
+                "returncode": -1,
+                "stdout": "",
+                "stderr": f"Command timeout after {timeout} seconds",
+            }
 
         result = {
             "returncode": process.returncode,
             "stdout": stdout.decode("utf-8", errors="ignore"),
             "stderr": stderr.decode("utf-8", errors="ignore"),
         }
-        
-        print(f"Command result: returncode={result['returncode']}, stdout_length={len(result['stdout'])}, stderr_length={len(result['stderr'])}")
-        
+
+        print(
+            f"Command result: returncode={result['returncode']}, stdout_length={len(result['stdout'])}, stderr_length={len(result['stderr'])}"
+        )
+
         return result
-        
+
     except FileNotFoundError as e:
         error_msg = f"Command not found: {command[0]} - {str(e)}"
         print(f"FileNotFoundError: {error_msg}")
@@ -353,18 +364,36 @@ def parse_semgrep_results(results: Dict) -> List[VulnerabilityInfo]:
     vulnerabilities = []
 
     for result in results.get("results", []):
+        # Extract code snippet using the helper function
+        code_snippet = extract_code_snippet(
+            result.get("path", ""),
+            result.get("start", {}).get("line", 0),
+            result.get("end", {}).get("line", 0),
+        )
         vuln = VulnerabilityInfo(
             tool="semgrep",
             severity=result.get("extra", {}).get("severity", "UNKNOWN"),
             description=result.get("extra", {}).get("message", ""),
             file_path=result.get("path", ""),
             line_number=result.get("start", {}).get("line"),
-            code_snippet=result.get("extra", {}).get("lines", ""),
+            code_snippet=code_snippet,
             recommendation=result.get("extra", {}).get("fix", ""),
         )
         vulnerabilities.append(vuln)
 
     return vulnerabilities
+
+
+def extract_code_snippet(file_path: str, start_line: int, end_line: int) -> str:
+    """Extract code snippet from a file given start and end lines."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            lines = file.readlines()
+            snippet = "".join(lines[start_line - 1 : end_line])
+            return snippet
+    except Exception as e:
+        print(f"Error extracting code snippet: {e}")
+        return "Error extracting code snippet"
 
 
 async def perform_security_scan(scan_id: str, scan_dir: str, scan_types: List[str]):
@@ -448,7 +477,8 @@ async def home():
             content = await f.read()
         return HTMLResponse(content=content)
     except FileNotFoundError:
-        return HTMLResponse(content="""
+        return HTMLResponse(
+            content="""
         <html>
         <head><title>CodeSec Scanner</title></head>
         <body>
@@ -456,7 +486,9 @@ async def home():
         <p>index.html file not found. Please ensure index.html is in the same directory as main.py</p>
         </body>
         </html>
-        """, status_code=404)
+        """,
+            status_code=404,
+        )
 
 
 @app.post("/scan/upload")
@@ -517,27 +549,27 @@ async def test_bandit_endpoint():
     try:
         # Test basic bandit availability
         bandit_available = await test_scanner_availability("bandit")
-        
+
         # Test on the vulnerable test file we created
         test_file_path = Path("test_bandit.py")
         if test_file_path.exists():
             file_scan_result = await run_bandit_scan(str(test_file_path))
         else:
             file_scan_result = {"error": "test_bandit.py not found"}
-        
+
         # Get bandit executable info
         bandit_exe = get_scanner_executable("bandit")
-        
+
         # Test simple bandit version command
         version_cmd = [bandit_exe, "-m", "bandit", "--version"]
         version_result = await run_command(version_cmd, timeout=30)
-        
+
         return {
             "bandit_available": bandit_available,
             "bandit_executable": bandit_exe,
             "version_test": version_result,
             "test_file_scan": file_scan_result,
-            "test_file_exists": test_file_path.exists()
+            "test_file_exists": test_file_path.exists(),
         }
     except Exception as e:
         return {"error": str(e), "type": type(e).__name__}
@@ -600,24 +632,24 @@ async def scan_code_content(
     try:
         # Map language to file extension
         language_extensions = {
-            'python': '.py',
-            'javascript': '.js',
-            'java': '.java',
-            'cpp': '.cpp',
-            'c': '.c',
-            'php': '.php',
-            'ruby': '.rb',
-            'go': '.go',
-            'typescript': '.ts',
-            'csharp': '.cs'
+            "python": ".py",
+            "javascript": ".js",
+            "java": ".java",
+            "cpp": ".cpp",
+            "c": ".c",
+            "php": ".php",
+            "ruby": ".rb",
+            "go": ".go",
+            "typescript": ".ts",
+            "csharp": ".cs",
         }
-        
-        extension = language_extensions.get(request.language, '.txt')
+
+        extension = language_extensions.get(request.language, ".txt")
         filename = f"code_to_scan{extension}"
         file_path = os.path.join(temp_dir, filename)
-        
+
         # Write code content to file
-        async with aiofiles.open(file_path, 'w', encoding='utf-8') as f:
+        async with aiofiles.open(file_path, "w", encoding="utf-8") as f:
             await f.write(request.code_content)
 
         # Initialize scan result
