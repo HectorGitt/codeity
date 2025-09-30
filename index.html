@@ -900,6 +900,14 @@
 		<script>
 			let currentScanId = null;
 
+			// Helper function to escape HTML entities
+			function escapeHtml(text) {
+				if (!text) return "";
+				const div = document.createElement("div");
+				div.textContent = text;
+				return div.innerHTML;
+			}
+
 			// Handle file upload form
 			document
 				.getElementById("upload-form")
@@ -1220,7 +1228,9 @@
 							}
                             ${
 								vuln.code_snippet
-									? `<pre style="background: #111827; color: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; overflow-x: auto; border-left: 4px solid #f59e0b; font-size: 14px; font-family: 'JetBrains Mono', monospace; border: 1px solid #374151;"><code style="color: #e5e7eb;">${vuln.code_snippet}</code></pre>`
+									? `<pre style="background: #111827; color: #f9fafb; padding: 15px; border-radius: 8px; margin: 15px 0; overflow-x: auto; border-left: 4px solid #f59e0b; font-size: 14px; font-family: 'JetBrains Mono', monospace; border: 1px solid #374151;"><code style="color: #e5e7eb;">${escapeHtml(
+											vuln.code_snippet
+									  )}</code></pre>`
 									: ""
 							}
                             ${
